@@ -1,0 +1,81 @@
+// main.js
+
+import { fileURLToPath } from "url";
+import path from "path";
+import { getLlama, LlamaChatSession } from "node-llama-cpp";
+import readline from "readline";
+
+// Get the directory name of the current module (this file)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Set the model path to the location you provided
+const modelPath = "C:\\Users\\haric\\.node-llama-cpp\\models\\qwen2.5-0.5b-instruct-q2_k.gguf";
+
+// Initialize readline interface for interactive CLI
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: '>> '
+});
+
+async function runChat() {
+    try {
+        // Load the Llama model using node-llama-cpp
+        console.log(`Loading model from: ${modelPath}`);
+        const llama = await getLlama();
+        const model = await llama.loadModel({
+            modelPath: modelPath
+        });
+        console.log("Model loaded successfully!");
+
+        // Create a new context for the model
+        const context = await model.createContext();
+        const session = new LlamaChatSession({
+            contextSequence: context.getSequence()
+        });
+
+        console.log("Chatbot is ready!");
+        console.log("Commands:");
+        console.log("  ask [your question] - Ask a question to the chatbot");
+        console.log("  exit - Exit the chatbot");
+        rl.prompt();
+
+        rl.on('line', async (input) => {
+            input = input.trim();
+            if (input.toLowerCase() === 'exit') {
+                console.log("Exiting chatbot. Goodbye!");
+                rl.close();
+                process.exit(0);
+            }
+
+            if (input.startsWith('ask ')) {
+                const question = input.slice(4).trim();
+                if (!question) {
+                    console.log("Please provide a valid question.");
+                    rl.prompt();
+                    return;
+                }
+
+                try {
+                    console.log("Generating response...");
+                    const botResponse = await session.prompt(question);
+                    console.log(`AI: ${botResponse.trim()}`);
+                } catch (error) {
+                    console.error("Error generating reply:", error);
+                }
+
+                rl.prompt();
+                return;
+            }
+
+            console.log("Invalid command. Use 'ask [your question]' or 'exit'.");
+            rl.prompt();
+        });
+
+    } catch (error) {
+        console.error("Error in chat:", error);
+    }
+}
+
+// Run the chat function
+runChat();
